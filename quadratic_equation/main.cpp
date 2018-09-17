@@ -1,7 +1,7 @@
-#include <iostream>
 #include <cassert>
 #include <climits>
 #include <cmath>
+#include <iostream>
 
 #define INF_ROOTS INT_MAX
 
