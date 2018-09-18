@@ -22,6 +22,8 @@ int SolveSquare(double a, double b, double c, double *x1, double *x2) {
     assert(x2 != nullptr);
     assert(x1 != x2);
 
+    /* Inaccurate comparison, think of epsilon */
+    /* That's it? Where main, where is input parsing, tests* */
     if (a == 0) {
         if (b == 0) {
             return c == 0 ? INF_ROOTS : 0;
