@@ -22,8 +22,8 @@
 }
 
 /* Left and right confines of CANARY values  */
-#define CANARY_LEFT_END(stack) stack->capacity / 2 + stack->capacity % 2
-#define CANARY_RIGHT_START(stack) 2 * stack->capacity - stack->capacity / 2
+#define CANARY_LEFT_END(   stack) ( stack->capacity / 2 + (stack)->capacity % 2 )
+#define CANARY_RIGHT_START(stack) ( stack->capacity * 2 - (stack)->capacity / 2 )
 #define CANARY 0xDEADBEEF
 
 #define BASE_INFO(stack) "top=%d, capacity=%d\n",\
@@ -109,7 +109,7 @@ int is_full(internal_stack *i_stack) {
 *         0 else
 */
 int fail_canaries(internal_stack *i_stack) {
-    int i;
+    int i = 0;
     for (i = 0; i < CANARY_LEFT_END(i_stack); i++) {
         if (i_stack->buffer[i] != CANARY) {
             return 1;
