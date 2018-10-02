@@ -33,7 +33,7 @@ int main() {
     print_debug_info(stack_second, STACK_INFO);
     
     /* And call SIGSEGV  */
-    *(int*)(stack_second->internal + 2 * sizeof(int)) = 21421;
+    *(*(int*)(stack_second->internal + 2 * sizeof(int))) = 21421;
     pop(stack_second);
     
     /* Free memory:  */
