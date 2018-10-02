@@ -35,4 +35,10 @@ int main() {
     /* And call SIGSEGV  */
     *(int*)(stack_second->internal + 2 * sizeof(int)) = 21421;
     pop(stack_second);
+    
+    /* Free memory:  */
+    free_buffer(stack);
+    free_buffer(stack_second);
+    free(stack->internal);
+    free(stack_second->internal);
 }

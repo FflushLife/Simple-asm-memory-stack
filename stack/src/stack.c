@@ -22,16 +22,16 @@
 }
 
 /* Left and right confines of CANARY values  */
-#define CANARY_LEFT_END i_stack->capacity / 2 + i_stack->capacity % 2
-#define CANARY_RIGHT_START 2 * i_stack->capacity - i_stack->capacity / 2
+#define CANARY_LEFT_END(stack) stack->capacity / 2 + stack->capacity % 2
+#define CANARY_RIGHT_START(stack) 2 * stack->capacity - stack->capacity / 2
 #define CANARY 0xDEADBEEF
 
-#define BASE_INFO "top=%d, capacity=%d\n",\
-           i_stack->top - i_stack->capacity / 2 - i_stack->capacity % 2,\
-                                                             i_stack->capacity
+#define BASE_INFO(stack) "top=%d, capacity=%d\n",\
+           stack->top - stack->capacity / 2 - stack->capacity % 2,\
+                                                             stack->capacity
 
 /* Create private stack from public  */
-#define CAST_INTERN(name, from); internal_stack *name \
+#define CAST_INTERN(to, from); internal_stack *to \
                                           = (internal_stack *) from->internal;
 
 /* Created on stack because of no need to free memory  */
@@ -59,12 +59,12 @@ custom_stack * create_custom_stack(int capacity) {
     CAST_INTERN(i_stack, stack);
     
     i_stack->capacity = capacity;
-    i_stack->top = CANARY_LEFT_END;
+    i_stack->top = CANARY_LEFT_END(i_stack);
     i_stack->buffer = (int *) malloc(2*capacity*sizeof(int)+capacity%2);
-    for (i = 0; i < CANARY_LEFT_END; i++) {
+    for (i = 0; i < CANARY_LEFT_END(i_stack); i++) {
         i_stack->buffer[i] = CANARY;
     }
-    for (i = CANARY_RIGHT_START; i < 2 * capacity + capacity % 2; i++) {
+    for (i = CANARY_RIGHT_START(i_stack); i < 2 * capacity + capacity % 2; i++) {
         i_stack->buffer[i] = CANARY;
     }
     
@@ -83,7 +83,7 @@ custom_stack * create_custom_stack(int capacity) {
 *         0 else
 */
 int is_empty(internal_stack *i_stack) {
-    if (i_stack->top == CANARY_LEFT_END) {
+    if (i_stack->top == CANARY_LEFT_END(i_stack)) {
         return 1;
     }
     return 0;
@@ -96,7 +96,7 @@ int is_empty(internal_stack *i_stack) {
 *         0 else
 */
 int is_full(internal_stack *i_stack) {
-    if (i_stack->top == CANARY_RIGHT_START) {
+    if (i_stack->top == CANARY_RIGHT_START(i_stack)) {
         return 1;
     }
     return 0;
@@ -110,12 +110,12 @@ int is_full(internal_stack *i_stack) {
 */
 int fail_canaries(internal_stack *i_stack) {
     int i;
-    for (i = 0; i < CANARY_LEFT_END; i++) {
+    for (i = 0; i < CANARY_LEFT_END(i_stack); i++) {
         if (i_stack->buffer[i] != CANARY) {
             return 1;
         }
     }
-    for (i = CANARY_RIGHT_START; i < 2 * i_stack->capacity 
+    for (i = CANARY_RIGHT_START(i_stack); i < 2 * i_stack->capacity 
                                                + i_stack->capacity % 2; i++) {
         if (i_stack->buffer[i] != CANARY) {
               return 1;
@@ -135,10 +135,10 @@ int is_corrupted(internal_stack *i_stack) {
         errno = 0b1000;
         return errno;
     }
-    if (i_stack->top < CANARY_LEFT_END) {
+    if (i_stack->top < CANARY_LEFT_END(i_stack)) {
         errno = 0b0100;
     }
-    if (i_stack->top > CANARY_RIGHT_START) {
+    if (i_stack->top > CANARY_RIGHT_START(i_stack)) {
         errno |= 0b0010;
     }
     if (fail_canaries(i_stack)) {
@@ -184,7 +184,7 @@ int top(custom_stack *stack) {
 void print_stack_elements(internal_stack *i_stack) {
     int i;
     printf("elements:\n");
-    for (i = CANARY_LEFT_END; i < CANARY_RIGHT_START - 1; i++) {
+    for (i = CANARY_LEFT_END(i_stack); i < CANARY_RIGHT_START(i_stack) - 1; i++) {
         printf("%d (%p), ", i_stack->buffer[i], &(i_stack->buffer[i]));
     }
     printf("%d (%p)\n", i_stack->buffer[i], &(i_stack->buffer[i]));
@@ -195,11 +195,11 @@ void print_debug_info(custom_stack *stack, int MODE) {
     printf("******************************\n");
     switch (MODE) {
         case STACK_INFO:
-            printf(BASE_INFO);
+            printf(BASE_INFO(i_stack));
             print_stack_elements(i_stack);
             break;
         case STACK_ERR:
-            printf(BASE_INFO);
+            printf(BASE_INFO(i_stack));
             print_stack_elements(i_stack);
             printf("Stack pointer: %p\n", (void *) stack);
             if (errno != 0) {
@@ -232,4 +232,9 @@ void dump_all_stacks() {
     for (i = 0; i < current_stack_count; i++) {
         print_debug_info(stacks[i], STACK_ERR);
     }
+}
+
+void free_buffer(custom_stack *stack) {
+    CAST_INTERN(i_stack, stack);
+    free(i_stack->buffer);
 }

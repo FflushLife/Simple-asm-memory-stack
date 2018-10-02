@@ -54,3 +54,9 @@ void print_debug_info(custom_stack *, int MODE);
 * @brief Dump all written stacks. Called if SIGSEGV was catched 
 */
 void dump_all_stacks();
+
+/**
+* @brief Clear stack buffer.
+* @param stack - target stack pointer
+*/
+void free_buffer(custom_stack *stack);
