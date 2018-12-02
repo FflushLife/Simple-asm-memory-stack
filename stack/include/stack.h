@@ -27,7 +27,7 @@ custom_stack *  create_custom_stack(int capacity);
 * @param stack - target stack structure pointer
 * @param elem - element that will be pushed in
 */
-void push(custom_stack *stack, int elem);
+void push(custom_stack *stack, double elem);
 
 /**
 * @brief Pop element from stack.
@@ -40,7 +40,7 @@ void pop(custom_stack *stack);
 * @param stack - target stack pointer
 * @return top element
 */
-int top(custom_stack *stack);
+double top(custom_stack *stack);
 
 /**
 * @brief Print out info about stack in 2 modes.

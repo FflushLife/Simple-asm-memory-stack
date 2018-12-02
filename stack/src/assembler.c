@@ -6,49 +6,86 @@
 
 #define add(reg, val) (regs.reg += val)
 #define DEFINE_NEW_ASM_COMMAND(name) {ASM_##name, #name, asm_##name##_func}
-#define EXE_ASM() void (*f)()=asm_commands[regs.ax].func; (*f)();
+#define EXE_ASM() void (*f)()=asm_commands[regs.r0].func; (*f)();
+// Here we get register currently loaded into exe command
+#define REG (*(&(regs.ax) + regs.r1))
 
 #define BUF_LEN 255
 #define MAGIC 534523679
 
-void asm_add_func() {
-   printf("Hello from add func\n"); 
-}
-
-void asm_sub_func() {
-    printf("Hello from sub func\n");
-}
-
-void asm_mul_func() {
-    printf("Hello from mul func\n");
-}
 
 static custom_stack *stack;
 static struct registers regs = {
-    .ax = MAGIC,
-    .bx = MAGIC,
-    .cx = MAGIC,
-    .dx = MAGIC
+    .ax = 0.0,
+    .bx = 0.0,
+    .cx = 0.0,
+    .dx = 0.0,
+    .r0 = MAGIC,
+    .r1 = MAGIC,
+    .r2 = MAGIC,
+    .r3 = MAGIC
 };
+
+
+// One genius hack is here: we get registers by pointer to raw memory
+void asm_add_func() {
+    REG += regs.r2;
+}
+
+void asm_sub_func() {
+    REG -= regs.r2;
+}
+
+void asm_mul_func() {
+    REG *= regs.r2;
+}
+
+void asm_div_func() {
+    REG /= regs.r2;
+}
+
+void asm_mov_func() {
+    /*
+       Implement modes for r3 firstly for
+       addressing by register or value or address
+    */
+}
+
+void asm_push_func() {
+    push(stack, regs.r1);
+}
+
+void asm_pop_func() {
+    regs.dx = top(stack);
+    pop(stack);
+}
 
 struct asm_command asm_commands[] = {
     DEFINE_NEW_ASM_COMMAND(add),
     DEFINE_NEW_ASM_COMMAND(sub),
-    DEFINE_NEW_ASM_COMMAND(mul)
+    DEFINE_NEW_ASM_COMMAND(mul),
+    DEFINE_NEW_ASM_COMMAND(sub),
+    DEFINE_NEW_ASM_COMMAND(mov),
+    DEFINE_NEW_ASM_COMMAND(push),
+    DEFINE_NEW_ASM_COMMAND(pop)
 }; 
 
 const char commands_filename[] = "/media/data/home/m0p3d/Documents/MIPT_system_programming/stack/include/commands.txt";
 
 void flush_regs() {
-    regs.ax = MAGIC;
-    regs.bx = MAGIC;
-    regs.cx = MAGIC;
-    regs.dx = MAGIC;
+    regs.ax = 0.0;
+    regs.bx = 0.0;
+    regs.cx = 0.0;
+    regs.dx = 0.0;
+    regs.r0 = MAGIC;
+    regs.r1 = MAGIC;
+    regs.r2 = MAGIC;
+    regs.r3 = MAGIC;
 }
 
 void print_regs() {
-    printf("Registers:\n ax: %d, bx: %d, cx: %d, dx:%d\n", regs.ax, regs.bx,
-    regs.cx, regs.dx);
+    printf("Registers:\n ax: %f, bx: %f, cx: %f, dx: %f\n r0: %d, r1: %d, r2: %d, r3: %d\n",
+    regs.ax, regs.bx, regs.cx, regs.dx, regs.r0, regs.r1, regs.r2, regs.r3);
 }
 
 int cmd(const char *command, size_t len) {
@@ -89,12 +126,11 @@ int get_cmd_by_name(const char *cmd_name) {
     while(fgets(buf, BUF_LEN, file)) {
         command_index = get_cmd_from_line(buf, command);
         if (!strcmp(command, cmd_name)) {
-            regs.ax = command_index;
-            break;
+            return command_index;
         }
         memset(command, '\0', BUF_LEN);
     }
-    return 0;
+    return MAGIC;
 }
 
 int parse_arg(const char *arg) {
@@ -112,34 +148,33 @@ int parse_arg(const char *arg) {
 }
 
 void fill_reg(const char *buf) {
-    int command = -1;
-    if (regs.ax == MAGIC) {
-        command = get_cmd_by_name(buf);
-    } else if (regs.bx == MAGIC) {
-        regs.bx = parse_arg(buf);
-    } else if (regs.cx == MAGIC) {
-        regs.cx = parse_arg(buf);
-    } else if (regs.dx == MAGIC) {
-        regs.dx = parse_arg(buf); 
+    if (regs.r0 == MAGIC) {
+        regs.r0 = get_cmd_by_name(buf);
+    } else if (regs.r1 == MAGIC) {
+        regs.r1 = parse_arg(buf);
+    } else if (regs.r2 == MAGIC) {
+        regs.r2 = parse_arg(buf);
+    } else if (regs.r3 == MAGIC) {
+        regs.r3 = parse_arg(buf); 
     }
 }
 
 void save_regs() {
-    push(stack, regs.ax);
-    push(stack, regs.bx);
-    push(stack, regs.cx);
-    push(stack, regs.dx);
+    //push(stack, regs.ax);
+    //push(stack, regs.bx);
+    //push(stack, regs.cx);
+    //push(stack, regs.dx);
 }
 
 void load_regs() {
-    regs.dx = top(stack);
-    pop(stack);
-    regs.cx = top(stack);
-    pop(stack);
-    regs.bx = top(stack);
-    pop(stack);
-    regs.ax = top(stack);
-    pop(stack);
+    //regs.dx = top(stack);
+    //pop(stack);
+    //regs.cx = top(stack);
+    //pop(stack);
+    //regs.bx = top(stack);
+    //pop(stack);
+    //regs.ax = top(stack);
+    //pop(stack);
 }
 
 int parse_command(const char *line) {
@@ -177,5 +212,6 @@ int parse_program(const char *filename) {
          print_regs();
          flush_regs();
      }
+     print_debug_info(stack, 0);
      return 0;
 }

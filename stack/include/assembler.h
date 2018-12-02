@@ -1,10 +1,14 @@
 #include "stdlib.h"
 
 struct registers {
-    int ax;
-    int bx;
-    int cx;
-    int dx;
+    double ax;
+    double bx;
+    double cx;
+    double dx;
+    int r0;
+    int r1;
+    int r2;
+    int r3;
 };
 
 struct asm_command {
@@ -18,6 +22,9 @@ enum commands {
     ASM_sub,
     ASM_mul,
     ASM_div,
+    ASM_mov,
+    ASM_push,
+    ASM_pop,
     ASM_jmp
 };
 

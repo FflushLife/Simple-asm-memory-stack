@@ -45,7 +45,7 @@ static int errno = 0; /** error flags  */
 typedef struct {
     int top;
     int capacity;
-    int *buffer;
+    double *buffer;
 } internal_stack;
 
 custom_stack * create_custom_stack(int capacity) {
@@ -60,7 +60,7 @@ custom_stack * create_custom_stack(int capacity) {
     
     i_stack->capacity = capacity;
     i_stack->top = CANARY_LEFT_END(i_stack);
-    i_stack->buffer = (int *) malloc(2*capacity*sizeof(int)+capacity%2);
+    i_stack->buffer = (double *) malloc(2*capacity*sizeof(double)+capacity%2);
     for (i = 0; i < CANARY_LEFT_END(i_stack); i++) {
         i_stack->buffer[i] = CANARY;
     }
@@ -70,7 +70,7 @@ custom_stack * create_custom_stack(int capacity) {
     
     stacks[current_stack_count] = stack;
     if (current_stack_count == 0) {
-    signal(SIGSEGV, signal_handler);
+        signal(SIGSEGV, signal_handler);
     }
     current_stack_count++;
     return stack;
@@ -150,7 +150,7 @@ int is_corrupted(internal_stack *i_stack) {
 /**
 * @note We should divide cases when stack is full, empty or corrupted
 */
-void push(custom_stack *stack, int elem) {
+void push(custom_stack *stack, double elem) {
     CAST_INTERN(i_stack, stack);
     //printf("top %d\n", i_stack->top);
     ASSERT_OK();
@@ -175,7 +175,7 @@ void pop(custom_stack *stack) {
     ASSERT_OK();
 }
 
-int top(custom_stack *stack) {
+double top(custom_stack *stack) {
     CAST_INTERN(i_stack, stack);
     ASSERT_OK();
     return i_stack->buffer[i_stack->top - 1];
@@ -185,9 +185,9 @@ void print_stack_elements(internal_stack *i_stack) {
     int i;
     printf("elements:\n");
     for (i = CANARY_LEFT_END(i_stack); i < CANARY_RIGHT_START(i_stack) - 1; i++) {
-        printf("%d (%p), ", i_stack->buffer[i], &(i_stack->buffer[i]));
+        printf("%f (%p), ", i_stack->buffer[i], &(i_stack->buffer[i]));
     }
-    printf("%d (%p)\n", i_stack->buffer[i], &(i_stack->buffer[i]));
+    printf("%f (%p)\n", i_stack->buffer[i], &(i_stack->buffer[i]));
 }
 
 void print_debug_info(custom_stack *stack, int MODE) {

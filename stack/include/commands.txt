@@ -2,5 +2,6 @@ add 0
 sub 1
 mul 2
 div 3
-push 4
-pop 5
+mov 4
+push 5
+pop 6
