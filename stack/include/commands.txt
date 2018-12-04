@@ -7,3 +7,4 @@ push 5
 pop 6
 call 7
 ret 8
+sqrt 9

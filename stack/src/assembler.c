@@ -1,14 +1,15 @@
 #include "../include/assembler.h"
 #include "../include/stack.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-#define add(reg, val) (regs.reg += val)
 #define DEFINE_NEW_ASM_COMMAND(name) {ASM_##name, #name, asm_##name##_func}
 #define EXE_ASM() void (*f)()=asm_commands[regs.r0].func; (*f)();
 // Here we get register currently loaded into exe command
 #define REG (*(&(regs.ax) + regs.r1))
+#define SIDE_REG (*(&(regs.ax) + regs.r2))
 
 #define BUF_LEN 255
 #define CMD_BUF_LEN 2056
@@ -27,6 +28,7 @@ static struct registers regs = {
     .r3 = MAGIC
 };
 static int cmd_pointer = 0;
+static int saved_cmd_pointer = 0;
 static int tag_pointer = 0;
 static int last_tag = 0;
 static int cmds[CMD_BUF_LEN];
@@ -34,20 +36,47 @@ static int tags[CMD_BUF_LEN];
 static char tags_names[CMD_BUF_LEN][CMD_BUF_LEN];
 
 
+int get_tag_by_name(const char *tag) {
+    int i = 0;
+    while(i < CMD_BUF_LEN) {
+        if (!strcmp(tags_names[i], tag)) {
+            return i;
+        }
+        i++;
+    }
+    return -1;
+}
+
 // One genius hack is here: we get registers by pointer to raw memory
 void asm_add_func() {
+    if (regs.r3 == 0) {
+        REG += SIDE_REG;
+        return;
+    }
     REG += regs.r2;
 }
 
 void asm_sub_func() {
+    if (regs.r3 == 0) {
+        REG -= SIDE_REG;
+        return;
+    }
     REG -= regs.r2;
 }
 
 void asm_mul_func() {
+    if (regs.r3 == 0) {
+        REG *= SIDE_REG;
+        return;
+    }
     REG *= regs.r2;
 }
 
 void asm_div_func() {
+    if (regs.r3 == 0) {
+        REG /= SIDE_REG;
+        return;
+    }
     REG /= regs.r2;
 }
 
@@ -59,6 +88,10 @@ void asm_mov_func() {
 }
 
 void asm_push_func() {
+    if (regs.r3 == 1) {
+        push(stack, REG);
+        return;
+    }
     push(stack, regs.r1);
 }
 
@@ -68,37 +101,32 @@ void asm_pop_func() {
 }
 
 void asm_call_func() {
-    
+    saved_cmd_pointer = cmd_pointer;
+    cmd_pointer = regs.r1;
 }
 
 void asm_ret_func() {
-    
+   cmd_pointer = saved_cmd_pointer; 
+}
+
+void asm_sqrt_func() {
+    REG = sqrt(REG);
 }
 
 struct asm_command asm_commands[] = {
     DEFINE_NEW_ASM_COMMAND(add),
     DEFINE_NEW_ASM_COMMAND(sub),
     DEFINE_NEW_ASM_COMMAND(mul),
-    DEFINE_NEW_ASM_COMMAND(sub),
+    DEFINE_NEW_ASM_COMMAND(div),
     DEFINE_NEW_ASM_COMMAND(mov),
     DEFINE_NEW_ASM_COMMAND(push),
     DEFINE_NEW_ASM_COMMAND(pop),
     DEFINE_NEW_ASM_COMMAND(call),
-    DEFINE_NEW_ASM_COMMAND(ret)
+    DEFINE_NEW_ASM_COMMAND(ret),
+    DEFINE_NEW_ASM_COMMAND(sqrt)
 }; 
 
 const char commands_filename[] = "/media/data/home/m0p3d/Documents/MIPT_system_programming/stack/include/commands.txt";
-
-int get_tag_by_name(char *tag) {
-    int i = 0;
-    while(i < CMD_BUF_LEN) {
-        if (!strcmp(tags_names[i], tag)) {
-            return i;
-        }
-        i++;
-    }
-    return -1;
-}
 
 void flush_regs() {
     regs.ax = 0.0;
@@ -179,6 +207,15 @@ int get_cmd_by_name(const char *cmd_name) {
 }
 
 int parse_arg(const char *arg) {
+    // Set mode means we have reg as the 2nd arg
+    if (!strcmp(arg, "ax") || !strcmp(arg, "bx") || !strcmp(arg, "cx")
+    || !strcmp(arg, "dx")) {
+        if (regs.r1 != MAGIC && regs.r0 != ASM_push) { // If we have a reg as the 2nd arg
+            regs.r3 = 0;
+        } else if (regs.r0 == ASM_push && regs.r1 == MAGIC) { // If we have a reg in push arg
+            regs.r3 = 1;
+        }
+    }
     if (!strcmp(arg, "ax")) {
         return 0;
     } else if (!strcmp(arg, "bx")) {
@@ -210,7 +247,11 @@ void fill_reg(const char *buf) {
     if (regs.r0 == MAGIC) {
         regs.r0 = get_cmd_by_name(buf);
     } else if (regs.r1 == MAGIC) {
-        regs.r1 = parse_arg(buf);
+        if (regs.r0 == ASM_call) { // This is call command
+            regs.r1 = tags[get_tag_by_name(buf)];
+        } else {
+            regs.r1 = parse_arg(buf);
+        }
     } else if (regs.r2 == MAGIC) {
         regs.r2 = parse_arg(buf);
     } else if (regs.r3 == MAGIC) {
@@ -258,7 +299,8 @@ exit:
 }
 
 void exe_all() {
-    cmd_pointer = 0;
+    cmd_pointer = tags[get_tag_by_name("main")];
+    printf("CMD POINTER: %d\n", cmd_pointer);
     while (cmds[cmd_pointer] != MAGIC) {
         fill_regs_from_cmds();
         EXE_ASM();
@@ -277,5 +319,6 @@ int parse_program(const char *filename) {
     print_cmd_buf();
     print_tags();
     exe_all();
+    print_debug_info(stack, 0);
     return 0;
 }

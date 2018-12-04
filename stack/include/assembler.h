@@ -26,10 +26,10 @@ enum commands {
     ASM_push,
     ASM_pop,
     ASM_call,
-    ASM_ret
+    ASM_ret,
+    ASM_sqrt
 };
 
-int cmd(const char *, size_t);
 int init_asm();
 void print_regs();
 int parse_program(const char *);
