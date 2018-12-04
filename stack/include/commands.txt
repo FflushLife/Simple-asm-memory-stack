@@ -5,3 +5,5 @@ div 3
 mov 4
 push 5
 pop 6
+call 7
+ret 8

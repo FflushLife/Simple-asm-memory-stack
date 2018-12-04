@@ -25,7 +25,8 @@ enum commands {
     ASM_mov,
     ASM_push,
     ASM_pop,
-    ASM_jmp
+    ASM_call,
+    ASM_ret
 };
 
 int cmd(const char *, size_t);
