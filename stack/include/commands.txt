@@ -8,3 +8,9 @@ pop 6
 call 7
 ret 8
 sqrt 9
+je 10
+jne 11
+in 12
+fluffy_bastard 13
+cmp 14
+out 15
