@@ -17,6 +17,8 @@
 
 
 static custom_stack *stack;
+static custom_stack *rets;
+
 static struct registers regs = {
     .ax = 0.0,
     .bx = 0.0,
@@ -34,6 +36,8 @@ static int last_tag = 0;
 static int cmds[CMD_BUF_LEN];
 static int tags[CMD_BUF_LEN];
 static char tags_names[CMD_BUF_LEN][CMD_BUF_LEN];
+static char strings[4][255] = {"There is 0 solutions\n", "There is 1 solution\n", "There is 2 solutions\n",
+    "There is infinity solutions\n"};
 
 
 int get_tag_by_name(const char *tag) {
@@ -101,16 +105,50 @@ void asm_pop_func() {
 }
 
 void asm_call_func() {
-    saved_cmd_pointer = cmd_pointer;
+    //saved_cmd_pointer = cmd_pointer;
+    push(rets, cmd_pointer);
     cmd_pointer = regs.r1;
 }
 
 void asm_ret_func() {
-   cmd_pointer = saved_cmd_pointer; 
+   cmd_pointer = (int) top(rets);
+   pop(rets); 
 }
 
 void asm_sqrt_func() {
     REG = sqrt(REG);
+}
+
+void asm_je_func() {
+   if (regs.ax == regs.bx) {
+       push(rets, cmd_pointer);
+       cmd_pointer = regs.r1;
+   } 
+}
+
+void asm_jne_func() {
+   if (regs.ax != regs.bx) {
+       push(rets, cmd_pointer);
+       cmd_pointer = regs.r1;
+   } 
+}
+
+void asm_in_func() {
+    int val = 0;
+    scanf("%d", &val);
+    REG = val;
+}
+
+void asm_fluffy_bastard_func() {
+    printf("\n\n\n\n\n(^._.^)ﾉ☆( _ _).oO\n\n\n\n\n");
+}
+
+void asm_cmp_func() {
+   // Implement this 
+}
+
+void asm_out_func() {
+    printf("%s\n", strings[regs.r1]);
 }
 
 struct asm_command asm_commands[] = {
@@ -123,7 +161,13 @@ struct asm_command asm_commands[] = {
     DEFINE_NEW_ASM_COMMAND(pop),
     DEFINE_NEW_ASM_COMMAND(call),
     DEFINE_NEW_ASM_COMMAND(ret),
-    DEFINE_NEW_ASM_COMMAND(sqrt)
+    DEFINE_NEW_ASM_COMMAND(sqrt),
+    DEFINE_NEW_ASM_COMMAND(je),
+    DEFINE_NEW_ASM_COMMAND(jne),
+    DEFINE_NEW_ASM_COMMAND(in),
+    DEFINE_NEW_ASM_COMMAND(fluffy_bastard),
+    DEFINE_NEW_ASM_COMMAND(cmp),
+    DEFINE_NEW_ASM_COMMAND(out)
 }; 
 
 const char commands_filename[] = "/media/data/home/m0p3d/Documents/MIPT_system_programming/stack/include/commands.txt";
@@ -167,6 +211,7 @@ void print_tags() {
 int init_asm() {
     int i;
     stack = create_custom_stack(20);
+    rets = create_custom_stack(20);
     for (i = 0; i < CMD_BUF_LEN; i++) {
         cmds[i] = MAGIC;
     }
@@ -203,11 +248,12 @@ int get_cmd_by_name(const char *cmd_name) {
         }
         memset(command, '\0', BUF_LEN);
     }
+    fclose(file);
     return MAGIC;
 }
 
 int parse_arg(const char *arg) {
-    // Set mode means we have reg as the 2nd arg
+    // Set mode that means we have reg as the 2nd arg
     if (!strcmp(arg, "ax") || !strcmp(arg, "bx") || !strcmp(arg, "cx")
     || !strcmp(arg, "dx")) {
         if (regs.r1 != MAGIC && regs.r0 != ASM_push) { // If we have a reg as the 2nd arg
@@ -243,11 +289,13 @@ void fill_regs_from_cmds() {
     regs.r3 = cmds[cmd_pointer++];
 }
 
+
 void fill_reg(const char *buf) {
     if (regs.r0 == MAGIC) {
         regs.r0 = get_cmd_by_name(buf);
     } else if (regs.r1 == MAGIC) {
-        if (regs.r0 == ASM_call) { // This is call command
+        if (regs.r0 == ASM_call || regs.r0 == ASM_je
+        || regs.r0 == ASM_jne) { // This is call command
             regs.r1 = tags[get_tag_by_name(buf)];
         } else {
             regs.r1 = parse_arg(buf);
@@ -259,11 +307,12 @@ void fill_reg(const char *buf) {
     }
 }
 
-int add_tag_from_buf(char *buf) {
+int add_tag_from_buf(const char *buf) {
     strcpy(tags_names[last_tag++], buf);
     return 0;
 }
 
+// Get command with args from line
 int parse_command(const char *line) {
     char buf[BUF_LEN] = "";
     int i = 0;
@@ -298,7 +347,8 @@ exit:
     return 0;
 }
 
-void exe_all() {
+// Execute all asm commands from "byte code" step by step
+int exe_all() {
     cmd_pointer = tags[get_tag_by_name("main")];
     printf("CMD POINTER: %d\n", cmd_pointer);
     while (cmds[cmd_pointer] != MAGIC) {
@@ -306,15 +356,24 @@ void exe_all() {
         EXE_ASM();
         print_regs(); 
     }
+    return 0;
 }
 
+/*
+ @brief run assembler code
+ @param filename - path to asm program
+*/
 int parse_program(const char *filename) {
     FILE *file = fopen(filename, "r");
     char buf[BUF_LEN] = "";
     while(fgets(buf, BUF_LEN, file)) {
+        if (!strcmp(buf, "\n")) {
+            continue;
+        }
         parse_command(buf);
         flush_regs();
     }
+    fclose(file);
     print_debug_info(stack, 0);
     print_cmd_buf();
     print_tags();

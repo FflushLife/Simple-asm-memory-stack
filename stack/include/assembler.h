@@ -1,5 +1,6 @@
 #include "stdlib.h"
 
+// First 4 regs are for sharing, others - for commands
 struct registers {
     double ax;
     double bx;
@@ -11,12 +12,14 @@ struct registers {
     int r3;
 };
 
+
 struct asm_command {
     int number;
     char *name;
     void *func;
 };
 
+// This schedule must be the same in three files
 enum commands {
     ASM_add,
     ASM_sub,
@@ -27,9 +30,16 @@ enum commands {
     ASM_pop,
     ASM_call,
     ASM_ret,
-    ASM_sqrt
+    ASM_sqrt,
+    ASM_je,
+    ASM_jne,
+    ASM_in,
+    ASM_fluffy_bastard,
+    ASM_cmp,
+    ASM_out
 };
 
+// Create stack and other objects
 int init_asm();
-void print_regs();
+// Run asm program from given path
 int parse_program(const char *);
