@@ -1,19 +1,3 @@
-0_sol:
-out 0
-ret
-
-1_sol:
-out 1
-ret
-
-2_sol:
-out 2
-ret
-
-inf_sol:
-out 3
-ret
-
 solve_linear:
 mul bx -1
 div bx ax
@@ -63,5 +47,3 @@ in ax
 in bx
 in cx
 call solve_quadro
-je 1_sol
-jne 2_sol

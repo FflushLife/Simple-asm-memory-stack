@@ -15,6 +15,10 @@
 #define CMD_BUF_LEN 2056
 #define MAGIC 534523679
 
+#define REG_ARG 0b1
+#define REG_PUSH_ARG 0b10
+#define RAM_ARG_F 0b100
+#define RAM_ARG_S 0b1000
 
 static custom_stack *stack;
 static custom_stack *rets;
@@ -35,6 +39,7 @@ static int tag_pointer = 0;
 static int last_tag = 0;
 static int cmds[CMD_BUF_LEN];
 static int tags[CMD_BUF_LEN];
+static double RAM[CMD_BUF_LEN];
 static char tags_names[CMD_BUF_LEN][CMD_BUF_LEN];
 static char strings[4][255] = {"There is 0 solutions\n", "There is 1 solution\n", "There is 2 solutions\n",
     "There is infinity solutions\n"};
@@ -53,23 +58,72 @@ int get_tag_by_name(const char *tag) {
 
 // One genius hack is here: we get registers by pointer to raw memory
 void asm_add_func() {
-    if (regs.r3 == 0) {
-        REG += SIDE_REG;
+    if (regs.r3 & REG_ARG) {
+        if (regs.r3 & RAM_ARG_F) {
+            if (regs.r3 & RAM_ARG_S) {
+                RAM[(int) REG] += RAM[(int) SIDE_REG];
+            } else {
+                RAM[(int) REG] += SIDE_REG;
+            }
+        } else {
+            if (regs.r3 & RAM_ARG_S) {
+                REG += RAM[(int) SIDE_REG];
+            } else {
+                REG += SIDE_REG;
+            }
+        }
         return;
     }
-    REG += regs.r2;
+    if (regs.r3 & RAM_ARG_F) {
+        if (regs.r3 & RAM_ARG_S) {
+            RAM[(int) REG] += RAM[(int) regs.r2];
+        } else {
+            RAM[(int) REG] += regs.r2;
+        }
+    } else {
+        if (regs.r3 & RAM_ARG_S) {
+            REG += RAM[(int) regs.r2];
+        } else {
+            REG += regs.r2;
+        }
+    }
 }
 
 void asm_sub_func() {
-    if (regs.r3 == 0) {
-        REG -= SIDE_REG;
+    printf("R3 REG: %d\n", regs.r3);
+    if (regs.r3 & REG_ARG) {
+        if (regs.r3 & RAM_ARG_F) {
+            if (regs.r3 & RAM_ARG_S) {
+                RAM[(int) REG] -= RAM[(int) SIDE_REG];
+            } else {
+                RAM[(int) REG] -= SIDE_REG;
+            }
+        } else {
+            if (regs.r3 & RAM_ARG_S) {
+                REG -= RAM[(int) SIDE_REG];
+            } else {
+                REG -= SIDE_REG;
+            }
+        }
         return;
     }
-    REG -= regs.r2;
+    if (regs.r3 & RAM_ARG_F) {
+        if (regs.r3 & RAM_ARG_S) {
+            RAM[(int) REG] -= RAM[(int) regs.r2];
+        } else {
+            RAM[(int) REG] -= regs.r2;
+        }
+    } else {
+        if (regs.r3 & RAM_ARG_S) {
+            REG -= RAM[(int) regs.r2];
+        } else {
+            REG -= regs.r2;
+        }
+    }
 }
 
 void asm_mul_func() {
-    if (regs.r3 == 0) {
+    if (regs.r3 & REG_ARG) {
         REG *= SIDE_REG;
         return;
     }
@@ -77,7 +131,7 @@ void asm_mul_func() {
 }
 
 void asm_div_func() {
-    if (regs.r3 == 0) {
+    if (regs.r3 & REG_ARG) {
         REG /= SIDE_REG;
         return;
     }
@@ -92,7 +146,7 @@ void asm_mov_func() {
 }
 
 void asm_push_func() {
-    if (regs.r3 == 1) {
+    if (regs.r3 & REG_PUSH_ARG) {
         push(stack, REG);
         return;
     }
@@ -105,7 +159,6 @@ void asm_pop_func() {
 }
 
 void asm_call_func() {
-    //saved_cmd_pointer = cmd_pointer;
     push(rets, cmd_pointer);
     cmd_pointer = regs.r1;
 }
@@ -147,10 +200,6 @@ void asm_cmp_func() {
    // Implement this 
 }
 
-void asm_out_func() {
-    printf("%s\n", strings[regs.r1]);
-}
-
 struct asm_command asm_commands[] = {
     DEFINE_NEW_ASM_COMMAND(add),
     DEFINE_NEW_ASM_COMMAND(sub),
@@ -166,11 +215,10 @@ struct asm_command asm_commands[] = {
     DEFINE_NEW_ASM_COMMAND(jne),
     DEFINE_NEW_ASM_COMMAND(in),
     DEFINE_NEW_ASM_COMMAND(fluffy_bastard),
-    DEFINE_NEW_ASM_COMMAND(cmp),
-    DEFINE_NEW_ASM_COMMAND(out)
+    DEFINE_NEW_ASM_COMMAND(cmp)
 }; 
 
-const char commands_filename[] = "/media/data/home/m0p3d/Documents/MIPT_system_programming/stack/include/commands.txt";
+const char commands_filename[] = "/media/data/home/m0p3d/Documents/MIPT_system_programming/stack_and_processor/include/commands.txt";
 
 void flush_regs() {
     regs.ax = 0.0;
@@ -200,6 +248,17 @@ void print_cmd_buf() {
     }
 }
 
+void print_RAM() {
+    int i;
+    printf("RAM: \n");
+    for (i = 0; i < CMD_BUF_LEN; i++) {
+        if (RAM[i] != MAGIC) {
+            printf("%d:%f ", i, RAM[i]);
+        }
+    }
+    printf("\n");
+}
+
 void print_tags() {
     int i = 0;
     printf("Tags:\n");
@@ -214,6 +273,7 @@ int init_asm() {
     rets = create_custom_stack(20);
     for (i = 0; i < CMD_BUF_LEN; i++) {
         cmds[i] = MAGIC;
+        RAM[i] = MAGIC;
     }
     return 0;
 }
@@ -252,14 +312,35 @@ int get_cmd_by_name(const char *cmd_name) {
     return MAGIC;
 }
 
-int parse_arg(const char *arg) {
+int parse_arg(char *arg) {
+    int i;
+    if (regs.r3 == MAGIC) {
+        regs.r3 = 0;
+    }
+    // Check if we write into RAM
+    if (arg[0] == '[') {
+        if (regs.r1 == MAGIC) {
+            regs.r3 |= RAM_ARG_F;
+        } else {
+            regs.r3 |= RAM_ARG_S;
+        }
+        i = 1;
+        while (arg[i]) {
+            if (arg[i] == ']') {
+                break;
+            }
+            arg[i-1] = arg[i];
+            i++;
+        }
+        arg[i-1] = '\0';
+    }
     // Set mode that means we have reg as the 2nd arg
     if (!strcmp(arg, "ax") || !strcmp(arg, "bx") || !strcmp(arg, "cx")
     || !strcmp(arg, "dx")) {
         if (regs.r1 != MAGIC && regs.r0 != ASM_push) { // If we have a reg as the 2nd arg
-            regs.r3 = 0;
+            regs.r3 |= REG_ARG;
         } else if (regs.r0 == ASM_push && regs.r1 == MAGIC) { // If we have a reg in push arg
-            regs.r3 = 1;
+            regs.r3 |= REG_PUSH_ARG;
         }
     }
     if (!strcmp(arg, "ax")) {
@@ -290,7 +371,7 @@ void fill_regs_from_cmds() {
 }
 
 
-void fill_reg(const char *buf) {
+void fill_reg(char *buf) {
     if (regs.r0 == MAGIC) {
         regs.r0 = get_cmd_by_name(buf);
     } else if (regs.r1 == MAGIC) {
@@ -326,7 +407,7 @@ int parse_command(const char *line) {
             fill_reg(buf);
             memset(buf, '\0', BUF_LEN);
             buf_i = 0;
-        } else if (symb == ':') {
+        } else if (symb == ':') { // New tag
             tags[tag_pointer++] = cmd_pointer;
             add_tag_from_buf(buf);
             memset(buf, '\0', BUF_LEN);
@@ -379,5 +460,6 @@ int parse_program(const char *filename) {
     print_tags();
     exe_all();
     print_debug_info(stack, 0);
+    print_RAM();
     return 0;
 }

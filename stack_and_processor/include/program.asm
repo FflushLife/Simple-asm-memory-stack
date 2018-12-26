@@ -14,4 +14,6 @@ in bx
   call point
 add ax cx
 fluffy_bastard
-out 0
+sub [cx] [cx]
+add [cx] 15
+add bx [cx]
